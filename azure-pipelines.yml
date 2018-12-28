@@ -1,58 +1,12 @@
-# Python Django
-# Test a Django project on multiple versions of Python.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/python
-pool:
-  vmImage: 'Ubuntu 16.04'
+name: $(SourceBranchName)_$(BuildDefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
+trigger:
+- master
 
+queue:
+  name: Hosted VS2017
 steps:
-- task: UsePythonVersion@0
+- task: PublishPipelineArtifact@0
+  displayName: 'Publish Source Code'
   inputs:
-    versionSpec: 3.5
-    architecture: 'x64'
-
-- task: PythonScript@0
-  displayName: 'Export project path'
-  inputs:
-    scriptSource: 'inline'
-    script: |
-      """Search all subdirectories for `manage.py`."""
-      from glob import iglob
-      from os import path
-      # Python >= 3.5
-      manage_py = next(iglob(path.join('**', 'manage.py'), recursive=True), None)
-      if not manage_py:
-          raise SystemExit('Could not find a Django project')
-      project_location = path.dirname(path.abspath(manage_py))
-      print('Found Django project in', project_location)
-      print('##vso[task.setvariable variable=projectRoot]{}'.format(project_location))
-
-- script: |
-    python -m pip install --upgrade pip setuptools wheel django
-    pip install -r requirements.txt
-    pip install unittest-xml-reporting
-  displayName: 'Install prerequisites'
-
-- script: |
-    pushd '$(projectRoot)'
-    python manage.py test --testrunner xmlrunner.extra.djangotestrunner.XMLTestRunner --no-input
-  condition: succeededOrFailed()
-  displayName: 'Run tests'
-
-- task: PublishTestResults@2
-  condition: succeededOrFailed()
-  inputs:
-    testResultsFiles: "**/TEST-*.xml"
-    testRunTitle: 'Python $(PYTHON_VERSION)'
-
-
-# Archive Files
-# Archive files using compression formats such as .7z, .rar, .tar.gz, and .zip.
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Build.BinariesDirectory)' 
-    includeRootFolder: true
-    archiveType: 'zip' # Options: zip, 7z, tar, wim
-    tarCompression: 'gz' # Optional. Options: gz, bz2, xz, none
-    archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip' 
-    replaceExistingArchive: true
+    artifactName: PythonTest
+    targetPath: '$(Build.SourcesDirectory)'
